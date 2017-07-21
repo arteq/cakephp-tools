@@ -87,7 +87,7 @@ class LogableBehavior extends ModelBehavior {
 		'skip' => [],
 		'ignore' => ['created', 'created_by', 'modified', 'modified_by', 'status_id'],
 		'classField' => 'model',
-		'foreignKey' => 'foreign_id',
+		'foreignKey' => 'model_id',
 		'autoRelation' => false, // Attach relation to the model (hasMany Log)
 	];
 
@@ -389,14 +389,27 @@ class LogableBehavior extends ModelBehavior {
 
 		$logData = [];
 		if ($this->Log->hasField('description')) {
-			$logData['description'] = $Model->alias;
+			// get model form
+			$_form = 'M';
+			
+			if (isset($Model->logName))
+			{
+				$logData['description'] = $Model->logName . ' ';
+				if (substr($Model->logName, -1) == 'a')
+					$_form = 'F';
+			}
+			else
+			{
+				$logData['description'] = $Model->alias;
+			}
+
 			if (isset($Model->data[$Model->alias][$Model->displayField]) && $Model->displayField != $Model->primaryKey) {
 				$logData['description'] .= ' "' . $Model->data[$Model->alias][$Model->displayField] . '"';
 			}
 			if ($this->settings[$Model->alias]['descriptionIds']) {
 				$logData['description'] .= ' (' . $Model->id . ') ';
 			}
-			$logData['description'] .= __d('tools', 'deleted');
+			$logData['description'] .= __d('tools', 'deleted'.$_form);
 		}
 		$logData['action'] = 'delete';
 		if (!$this->_saveLog($Model, $logData)) {
@@ -468,8 +481,15 @@ class LogableBehavior extends ModelBehavior {
 			$logData[$this->settings[$Model->alias]['foreignKey']] = $id;
 		}
 		if ($this->Log->hasField('description')) {
+			// get form M/F
+			$_form = 'M';
+
 			if (isset($Model->logName))
+			{
 				$logData['description'] = $Model->logName . ' ';
+				if (substr($Model->logName, -1) == 'a')
+					$_form = 'F';
+			}
 			else	
 				$logData['description'] = $Model->alias . ' ';
 
@@ -482,9 +502,9 @@ class LogableBehavior extends ModelBehavior {
 			}
 
 			if ($created) {
-				$logData['description'] .= __d('tools', 'added');
+				$logData['description'] .= __d('tools', 'added'.$_form);
 			} else {
-				$logData['description'] .= __d('tools', 'updated');
+				$logData['description'] .= __d('tools', 'updated'.$_form);
 			}
 		}
 		if ($this->Log->hasField('action')) {
