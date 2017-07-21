@@ -2,7 +2,7 @@
 App::uses('CakeSession', 'Model/Datasource');
 App::uses('ModelBehavior', 'Model');
 App::uses('Utility', 'Utility');
-App::uses('ShimModel', 'Shim.Model');
+// App::uses('ShimModel', 'Shim.Model');
 
 if (!defined('CLASS_USER')) {
 	define('CLASS_USER', 'User');
@@ -79,12 +79,13 @@ class LogableBehavior extends ModelBehavior {
 		'enabled' => true,
 		'on' => 'save', // On validate/save
 		'userModel' => CLASS_USER,
-		'logModel' => 'Tools.Log',
+		'logModel' => 'Log',
 		'userKey' => 'user_id',
-		'change' => 'list',
+		'userName' => 'user_name',
+		'change' => 'full',
 		'descriptionIds' => true,
 		'skip' => [],
-		'ignore' => [],
+		'ignore' => ['created', 'created_by', 'modified', 'modified_by', 'status_id'],
 		'classField' => 'model',
 		'foreignKey' => 'foreign_id',
 		'autoRelation' => false, // Attach relation to the model (hasMany Log)
@@ -501,7 +502,10 @@ class LogableBehavior extends ModelBehavior {
 				}
 				if ($key !== 'modified' && !in_array($key, $this->settings[$Model->alias]['ignore']) && $value != $old && in_array($key, $dbFields)) {
 					if ($this->settings[$Model->alias]['change'] === 'full') {
-						$changedFields[] = $key . ' (' . $old . ') => (' . $value . ')';
+						$key_name = isset($Model->logFields[$key]['name']) ? $Model->logFields[$key]['name'] : $key; 
+						$old = isset($Model->logFields[$key]['values'][$old]) ? $Model->logFields[$key]['values'][$old] : $old;
+						$new = isset($Model->logFields[$key]['values'][$value]) ? $Model->logFields[$key]['values'][$value] : $value;
+						$changedFields[$key_name] = array('old' => $old, 'new' => $new);
 					} elseif ($this->settings[$Model->alias]['change'] === 'serialize') {
 						$changedFields[$key] = ['old' => $old, 'value' => $value];
 					} else {
@@ -513,17 +517,26 @@ class LogableBehavior extends ModelBehavior {
 			if (!$changes) {
 				return true;
 			}
+			/*
 			if ($this->settings[$Model->alias]['change'] === 'serialize') {
 				$logData['change'] = serialize($changedFields);
 			} else {
 				$logData['change'] = implode(', ', $changedFields);
 			}
+			*/
+			$logData['change'] = serialize($changedFields);
 			$logData['changes'] = $changes;
 		}
 
 		if (empty($logData)) {
 			return true;
 		}
+
+		if (method_exists($Model, '_prepareLog'))
+		{
+			$logData = $Model->_prepareLog($logData);
+		}
+
 		return $this->_saveLog($Model, $logData);
 	}
 
@@ -616,6 +629,10 @@ class LogableBehavior extends ModelBehavior {
 			$logData[$this->settings[$Model->alias]['userKey']] = $this->user[$this->UserModel->alias][$this->UserModel->primaryKey];
 		}
 
+		if ($this->Log->hasField($this->settings[$Model->alias]['userName']) && $this->user && isset($this->user[$this->UserModel->alias])) {
+			$logData[$this->settings[$Model->alias]['userName']] = $this->user[$this->UserModel->alias]['Profile']['name'];
+		}
+
 		if ($this->Log->hasField('description')) {
 			if (empty($logData['description'])) {
 				$logData['description'] = __d('tools', 'Custom action');
@@ -646,9 +663,11 @@ class LogableBehavior extends ModelBehavior {
 	 * @return string|false
 	 */
 	protected function _getField($Model) {
+		/*
 		if ($Model instanceof ShimModel) {
 			return $Model->fieldByConditions($Model->displayField, ['id' => $Model->id]);
 		}
+		*/
 		return $Model->field($Model->displayField);
 	}
 
