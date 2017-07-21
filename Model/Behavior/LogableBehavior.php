@@ -106,7 +106,7 @@ class LogableBehavior extends ModelBehavior {
 	 */
 	public function setup(Model $Model, $config = []) {
 		$config += (array)Configure::read('Logable');
-		$this->settings[$Model->alias] = $config + $this->_defaultConfig;
+		$this->settings[$Model->alias] = array_merge_recursive($config, $this->_defaultConfig);
 		$this->settings[$Model->alias]['ignore'][] = $Model->primaryKey;
 
 		$this->Log = ClassRegistry::init($this->settings[$Model->alias]['logModel']);
@@ -472,7 +472,7 @@ class LogableBehavior extends ModelBehavior {
 				$logData['description'] = $Model->logName . ' ';
 			else	
 				$logData['description'] = $Model->alias . ' ';
-			
+
 			if (isset($Model->data[$Model->alias][$Model->displayField]) && $Model->displayField != $Model->primaryKey) {
 				$logData['description'] .= '"' . $Model->data[$Model->alias][$Model->displayField] . '" ';
 			}
@@ -637,6 +637,7 @@ class LogableBehavior extends ModelBehavior {
 			$logData[$this->settings[$Model->alias]['userName']] = $this->user[$this->UserModel->alias]['Profile']['name'];
 		}
 
+		/*
 		if ($this->Log->hasField('description')) {
 			if (empty($logData['description'])) {
 				$logData['description'] = __d('tools', 'Custom action');
@@ -652,6 +653,7 @@ class LogableBehavior extends ModelBehavior {
 			}
 			$logData['description'] .= '.';
 		}
+		*/
 
 		if (empty($logData['title'])) {
 			// Fallback in case the title is null - add the action + ed
